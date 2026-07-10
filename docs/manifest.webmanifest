@@ -1,0 +1,9 @@
+{
+  "name": "Golf Ball Radar Web Trial",
+  "short_name": "Ball Radar",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#06110c",
+  "theme_color": "#07150f",
+  "description": "ゴルフボールの推定着地点へ案内するWeb試作版"
+}
