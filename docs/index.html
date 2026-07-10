@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+  <meta name="theme-color" content="#07150f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Ball Radar">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <title>Golf Ball Radar Web Trial</title>
+  <style>
+    :root{color-scheme:dark;--bg:#06110c;--panel:#0d2117;--panel2:#132b1e;--line:#2d5a40;--green:#57e389;--yellow:#ffd84a;--red:#ff6961;--text:#f5fff8;--muted:#a8c5b2}
+    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+    body{margin:0;background:radial-gradient(circle at top,#123521 0,#06110c 42%);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans",sans-serif;min-height:100vh}
+    main{max-width:720px;margin:auto;padding:max(16px,env(safe-area-inset-top)) 14px max(30px,env(safe-area-inset-bottom))}
+    h1{font-size:24px;margin:4px 0 2px}.sub{color:var(--muted);font-size:13px;margin:0 0 14px}.card{background:rgba(13,33,23,.94);border:1px solid rgba(87,227,137,.18);border-radius:18px;padding:15px;margin:12px 0;box-shadow:0 12px 34px rgba(0,0,0,.24)}
+    .warning{font-size:12px;color:#ffe8a1;background:#352d0e;border:1px solid #766626;border-radius:12px;padding:10px;line-height:1.55}
+    label{display:block;font-size:13px;color:var(--muted);margin:11px 0 5px}input,select{width:100%;font-size:16px;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:11px;padding:12px}input[type=range]{padding:5px 0;border:0;background:transparent}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.value{font-variant-numeric:tabular-nums;color:var(--yellow);font-weight:700}.row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+    button{width:100%;border:0;border-radius:13px;padding:14px 12px;font-size:16px;font-weight:750;background:var(--green);color:#05220f;margin-top:10px}button.secondary{background:#244b34;color:var(--text)}button.yellow{background:var(--yellow);color:#241d00}button.danger{background:#5a2626;color:#fff}button:disabled{opacity:.45}
+    .camera{position:relative;overflow:hidden;border-radius:16px;background:#000;aspect-ratio:4/3;border:1px solid var(--line)}video{width:100%;height:100%;object-fit:cover;display:block}.cross{position:absolute;left:50%;top:50%;width:54px;height:54px;transform:translate(-50%,-50%);border:2px solid rgba(255,216,74,.75);border-radius:50%;pointer-events:none}.cross:before,.cross:after{content:"";position:absolute;background:rgba(255,216,74,.8)}.cross:before{width:1px;height:76px;left:25px;top:-13px}.cross:after{height:1px;width:76px;left:-13px;top:25px}.tapmark{display:none;position:absolute;width:28px;height:28px;border:3px solid var(--yellow);border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 0 5px rgba(255,216,74,.16);pointer-events:none}.camhint{position:absolute;left:8px;right:8px;bottom:8px;padding:7px 9px;border-radius:9px;background:rgba(0,0,0,.62);font-size:12px;text-align:center}
+    #radar{display:block;width:min(88vw,390px);height:min(88vw,390px);max-width:390px;max-height:390px;margin:4px auto}.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.metric{background:#10291b;border-radius:12px;padding:10px;text-align:center}.metric b{display:block;font-size:20px;color:var(--yellow);font-variant-numeric:tabular-nums}.metric span{font-size:11px;color:var(--muted)}
+    .status{font-size:13px;line-height:1.55;color:var(--muted);margin-top:8px}.ok{color:var(--green)}.bad{color:#ff9b95}.hidden{display:none}.steps{margin:0;padding-left:21px;color:var(--muted);font-size:14px;line-height:1.8}footer{text-align:center;color:#6e927b;font-size:11px;padding-top:10px}
+  </style>
+</head>
+<body>
+<main>
+  <h1>Golf Ball Radar</h1>
+  <p class="sub">iPhone Safariで試すWeb版</p>
+  <div class="warning">これは操作と探索レーダーを試す初期版です。ボールの自動画像追跡・草の中の自動発見はまだ搭載していません。実際のプレーでは安全とゴルフ場のルールを優先してください。</div>
+
+  <section class="card">
+    <div class="row"><strong>① 端末を準備</strong><span id="secureBadge" class="value">確認中</span></div>
+    <button id="permissionBtn">カメラ・位置・方位を許可</button>
+    <div id="permissionStatus" class="status">Safariで開き、ボタンを押してください。</div>
+  </section>
+
+  <section class="card">
+    <strong>② ボールと飛距離を設定</strong>
+    <label for="ballId">自分のボール識別</label>
+    <input id="ballId" value="HS-01" maxlength="20" placeholder="例：HS-01 / 赤青2点">
+    <div class="grid">
+      <div><label for="club">クラブ</label><select id="club"><option value="200">ドライバー</option><option value="170">5W</option><option value="145">7番アイアン</option><option value="120">9番アイアン</option><option value="90">ウェッジ</option><option value="custom">手動入力</option></select></div>
+      <div><label for="carry">想定キャリー</label><input id="carry" type="number" inputmode="decimal" min="20" max="300" value="200"><small>m</small></div>
+    </div>
+    <label for="correction">左右補正 <span id="correctionValue" class="value">0°</span></label>
+    <input id="correction" type="range" min="-35" max="35" value="0" step="1">
+  </section>
+
+  <section class="card">
+    <strong>③ ショット方向を記録</strong>
+    <div id="camera" class="camera">
+      <video id="video" playsinline muted autoplay></video><div class="cross"></div><div id="tapmark" class="tapmark"></div>
+      <div class="camhint">iPhoneをティー後方に固定。ショット後、ボールを見失った方向を画面上でタップ</div>
+    </div>
+    <button id="markOriginBtn" class="yellow">ショット地点と正面方向を記録</button>
+    <button id="makeTargetBtn" disabled>タップ方向から着地点を作成</button>
+    <button id="simulateBtn" class="secondary">まずは30m先でレーダーだけ試す</button>
+    <div id="shotStatus" class="status">先に権限を許可してください。</div>
+  </section>
+
+  <section id="radarCard" class="card hidden">
+    <div class="row"><strong>④ レーダーで探す</strong><span id="ballLabel" class="value"></span></div>
+    <canvas id="radar" width="390" height="390"></canvas>
+    <div class="metrics">
+      <div class="metric"><b id="distance">--</b><span>残り距離 m</span></div>
+      <div class="metric"><b id="bearing">--</b><span>目標方位</span></div>
+      <div class="metric"><b id="accuracy">--</b><span>GPS精度 m</span></div>
+    </div>
+    <div id="radarStatus" class="status">黄色い点が画面上側に来るよう端末を向けて進みます。</div>
+    <button id="clearBtn" class="danger">探索を終了</button>
+  </section>
+
+  <section class="card">
+    <strong>試し方</strong>
+    <ol class="steps"><li>まず「30m先でレーダーだけ試す」を押す</li><li>端末の向きを変え、黄色い点が動くか確認</li><li>屋外で数m歩き、残り距離が変わるか確認</li><li>次にカメラを使い、実際のショット方向をタップする</li></ol>
+  </section>
+  <footer>Prototype data stays in this browser. No video is uploaded.</footer>
+</main>
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+const state={stream:null,location:null,heading:0,origin:null,originHeading:0,target:null,tapX:.5,watchId:null};
+const rad=d=>d*Math.PI/180,deg=r=>r*180/Math.PI,norm=d=>(d%360+360)%360;
+function setStatus(id,text,cls=''){const e=$(id);e.textContent=text;e.className='status '+cls}
+function destination(p,distance,bearing){const R=6371000,ad=distance/R,b=rad(bearing),lat1=rad(p.lat),lon1=rad(p.lon);const lat2=Math.asin(Math.sin(lat1)*Math.cos(ad)+Math.cos(lat1)*Math.sin(ad)*Math.cos(b));const lon2=lon1+Math.atan2(Math.sin(b)*Math.sin(ad)*Math.cos(lat1),Math.cos(ad)-Math.sin(lat1)*Math.sin(lat2));return{lat:deg(lat2),lon:deg(lon2)}}
+function distance(a,b){const R=6371000,dLat=rad(b.lat-a.lat),dLon=rad(b.lon-a.lon),la1=rad(a.lat),la2=rad(b.lat);const h=Math.sin(dLat/2)**2+Math.cos(la1)*Math.cos(la2)*Math.sin(dLon/2)**2;return 2*R*Math.asin(Math.sqrt(h))}
+function bearing(a,b){const la1=rad(a.lat),la2=rad(b.lat),dl=rad(b.lon-a.lon);return norm(deg(Math.atan2(Math.sin(dl)*Math.cos(la2),Math.cos(la1)*Math.sin(la2)-Math.sin(la1)*Math.cos(la2)*Math.cos(dl))))}
+async function startCamera(){if(!navigator.mediaDevices?.getUserMedia)throw new Error('この環境ではカメラを利用できません');state.stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},audio:false});$('video').srcObject=state.stream}
+function startLocation(){return new Promise((resolve,reject)=>{if(!navigator.geolocation)return reject(new Error('位置情報に非対応です'));state.watchId=navigator.geolocation.watchPosition(p=>{state.location={lat:p.coords.latitude,lon:p.coords.longitude,accuracy:p.coords.accuracy};drawRadar();resolve()},reject,{enableHighAccuracy:true,maximumAge:1000,timeout:15000})})}
+async function startOrientation(){if(typeof DeviceOrientationEvent!=='undefined'&&typeof DeviceOrientationEvent.requestPermission==='function'){const r=await DeviceOrientationEvent.requestPermission();if(r!=='granted')throw new Error('方位センサーが許可されませんでした')}window.addEventListener('deviceorientation',e=>{let h=typeof e.webkitCompassHeading==='number'?e.webkitCompassHeading:(e.alpha==null?state.heading:norm(360-e.alpha));if(Number.isFinite(h)){state.heading=h;drawRadar()}},true)}
+$('permissionBtn').addEventListener('click',async()=>{try{$('permissionBtn').disabled=true;setStatus('permissionStatus','許可を確認しています…');await Promise.all([startCamera(),startLocation(),startOrientation()]);setStatus('permissionStatus','カメラ・位置・方位を利用できます。','ok');$('markOriginBtn').disabled=false}catch(e){setStatus('permissionStatus',e.message||'権限を取得できませんでした。','bad');$('permissionBtn').disabled=false}});
+$('club').addEventListener('change',e=>{if(e.target.value!=='custom')$('carry').value=e.target.value});$('correction').addEventListener('input',e=>$('correctionValue').textContent=`${Number(e.target.value)>0?'+':''}${e.target.value}°`);$('ballId').addEventListener('change',e=>localStorage.setItem('ballId',e.target.value));$('ballId').value=localStorage.getItem('ballId')||'HS-01';
+$('camera').addEventListener('click',e=>{const r=e.currentTarget.getBoundingClientRect();state.tapX=Math.min(1,Math.max(0,(e.clientX-r.left)/r.width));const m=$('tapmark');m.style.left=`${state.tapX*100}%`;m.style.top=`${Math.min(82,Math.max(18,(e.clientY-r.top)/r.height*100))}%`;m.style.display='block';setStatus('shotStatus',`画面位置を記録しました。左右角度の目安 ${((state.tapX-.5)*65).toFixed(1)}°`,'ok');if(state.origin)$('makeTargetBtn').disabled=false});
+$('markOriginBtn').addEventListener('click',()=>{if(!state.location)return setStatus('shotStatus','位置情報がまだ取得できていません。屋外で再試行してください。','bad');state.origin={lat:state.location.lat,lon:state.location.lon};state.originHeading=state.heading;state.tapX=.5;$('tapmark').style.display='none';$('makeTargetBtn').disabled=false;setStatus('shotStatus',`ショット地点を記録しました。正面方位 ${state.originHeading.toFixed(0)}°。ショット後、見失った方向を画面タップしてください。`,'ok')});
+function createTarget(sim=false){if(!state.location)return setStatus('shotStatus','位置情報を取得してから試してください。','bad');const origin=sim?{lat:state.location.lat,lon:state.location.lon}:(state.origin||{lat:state.location.lat,lon:state.location.lon});const carry=sim?30:Math.max(20,Math.min(300,Number($('carry').value)||100));const offset=sim?0:(state.tapX-.5)*65;const correction=sim?0:Number($('correction').value);const b=norm((sim?state.heading:state.originHeading)+offset+correction);state.target=destination(origin,carry,b);localStorage.setItem('lastTarget',JSON.stringify(state.target));$('ballLabel').textContent=$('ballId').value;$('radarCard').classList.remove('hidden');$('radarCard').scrollIntoView({behavior:'smooth'});setStatus('shotStatus',`推定地点を作成：方位 ${b.toFixed(0)}°、距離 ${carry.toFixed(0)}m`,'ok');drawRadar()}
+$('makeTargetBtn').addEventListener('click',()=>createTarget(false));$('simulateBtn').addEventListener('click',()=>createTarget(true));$('clearBtn').addEventListener('click',()=>{state.target=null;localStorage.removeItem('lastTarget');$('radarCard').classList.add('hidden')});
+function drawRadar(){if(!state.target||!state.location)return;const canvas=$('radar'),ctx=canvas.getContext('2d'),w=canvas.width,h=canvas.height,cx=w/2,cy=h/2,maxR=w*.43;ctx.clearRect(0,0,w,h);ctx.fillStyle='#071a10';ctx.beginPath();ctx.arc(cx,cy,maxR,0,Math.PI*2);ctx.fill();ctx.strokeStyle='rgba(87,227,137,.28)';ctx.lineWidth=2;[.25,.5,.75,1].forEach(s=>{ctx.beginPath();ctx.arc(cx,cy,maxR*s,0,Math.PI*2);ctx.stroke()});for(let i=0;i<12;i++){const a=rad(i*30-90),r1=maxR*.92,r2=maxR;ctx.beginPath();ctx.moveTo(cx+Math.cos(a)*r1,cy+Math.sin(a)*r1);ctx.lineTo(cx+Math.cos(a)*r2,cy+Math.sin(a)*r2);ctx.stroke()}ctx.fillStyle='#66aaff';ctx.beginPath();ctx.arc(cx,cy,8,0,Math.PI*2);ctx.fill();const d=distance(state.location,state.target),b=bearing(state.location,state.target),rel=norm(b-state.heading),a=rad(rel-90),dotR=Math.min(maxR*.82,Math.max(maxR*.25,d/100*maxR*.82));const x=cx+Math.cos(a)*dotR,y=cy+Math.sin(a)*dotR;ctx.strokeStyle='rgba(255,216,74,.5)';ctx.setLineDash([7,7]);ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(x,y);ctx.stroke();ctx.setLineDash([]);ctx.shadowBlur=18;ctx.shadowColor='#ffd84a';ctx.fillStyle='#ffd84a';ctx.beginPath();ctx.arc(x,y,12,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;ctx.fillStyle='#d9f7e3';ctx.font='bold 15px -apple-system';ctx.textAlign='center';ctx.fillText('進行方向',cx,24);$('distance').textContent=d.toFixed(d<20?1:0);$('bearing').textContent=`${b.toFixed(0)}°`;$('accuracy').textContent=state.location.accuracy?state.location.accuracy.toFixed(0):'--';$('radarStatus').textContent=d<8?'推定地点付近です。周囲を目視で探してください。':'黄色い点が上側に来るよう端末を向けて進みます。'}
+$('secureBadge').textContent=window.isSecureContext?'HTTPS OK':'HTTPS必要';$('secureBadge').className='value '+(window.isSecureContext?'ok':'bad');$('markOriginBtn').disabled=true;
+const saved=localStorage.getItem('lastTarget');if(saved){try{state.target=JSON.parse(saved)}catch{}}
+if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+</script>
+</body>
+</html>
